@@ -48,11 +48,11 @@ app.post('/api/auth', async (req, res) => {
     } else {
       let referredById = null;
       if (refCode) {
-        const { data: referrer } = await supabase.from('User').select('userId, mainBalance').eq('referralCode', refCode).single(); // DIUBAH: select mainBalance
+        const { data: referrer } = await supabase.from('User').select('userId, mainBalance').eq('referralCode', refCode).single();
         if (referrer) {
           referredById = referrer.userId;
           const REFERRAL_BONUS = 500;
-          const newReferrerBalance = parseFloat(referrer.mainBalance) + REFERRAL_BONUS; // DIUBAH: update mainBalance
+          const newReferrerBalance = parseFloat(referrer.mainBalance) + REFERRAL_BONUS;
           await supabase.from('User').update({ mainBalance: newReferrerBalance }).eq('userId', referrer.userId);
         }
       }
@@ -97,7 +97,7 @@ app.post('/api/check-in', async (req, res) => {
     return res.status(400).json({ error: 'telegramId dibutuhkan' });
   }
   try {
-    const { data: user, error: findError } = await supabase.from('User').select('userId, earningBalance, lastCheckIn').eq('telegramId', telegramId).single(); // DIUBAH: select earningBalance
+    const { data: user, error: findError } = await supabase.from('User').select('userId, earningBalance, lastCheckIn').eq('telegramId', telegramId).single();
     if (findError || !user) {
       return res.status(404).json({ error: 'User tidak ditemukan.' });
     }
@@ -111,7 +111,7 @@ app.post('/api/check-in', async (req, res) => {
       }
     }
     const checkInReward = 100;
-    const newBalance = parseFloat(user.earningBalance) + checkInReward; // DIUBAH: update earningBalance
+    const newBalance = parseFloat(user.earningBalance) + checkInReward;
     const { data: updatedUser, error: updateError } = await supabase.from('User').update({ earningBalance: newBalance, lastCheckIn: new Date().toISOString() }).eq('telegramId', telegramId).select().single();
     if (updateError) throw updateError;
     res.status(200).json({ message: `Check-in berhasil! Anda mendapatkan ${checkInReward} poin.`, user: updatedUser });
@@ -129,7 +129,7 @@ app.post('/api/reward-ad', async (req, res) => {
     const AD_REWARD = 10;
     const DAILY_AD_LIMIT = 100;
     try {
-        let { data: user, error: findError } = await supabase.from('User').select('userId, earningBalance, adsWatchedToday, lastAdWatchedAt').eq('telegramId', telegramId).single(); // DIUBAH: select earningBalance
+        let { data: user, error: findError } = await supabase.from('User').select('userId, earningBalance, adsWatchedToday, lastAdWatchedAt').eq('telegramId', telegramId).single();
         if (findError) throw findError;
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -143,7 +143,7 @@ app.post('/api/reward-ad', async (req, res) => {
         if (adsWatched >= DAILY_AD_LIMIT) {
             return res.status(400).json({ message: 'Anda telah mencapai batas menonton iklan hari ini.' });
         }
-        const newBalance = parseFloat(user.earningBalance) + AD_REWARD; // DIUBAH: update earningBalance
+        const newBalance = parseFloat(user.earningBalance) + AD_REWARD;
         const newAdsWatchedCount = adsWatched + 1;
         const { data: updatedUser, error: updateError } = await supabase.from('User').update({ earningBalance: newBalance, adsWatchedToday: newAdsWatchedCount, lastAdWatchedAt: new Date().toISOString() }).eq('telegramId', telegramId).select().single();
         if (updateError) throw updateError;
@@ -154,6 +154,43 @@ app.post('/api/reward-ad', async (req, res) => {
     }
 });
 
+app.post('/api/convert/earning-to-main', async (req, res) => {
+  const { telegramId, amount } = req.body;
+  if (!telegramId || !amount) {
+    return res.status(400).json({ error: 'telegramId dan amount dibutuhkan' });
+  }
+  const amountToConvert = parseFloat(amount);
+  if (isNaN(amountToConvert) || amountToConvert <= 0) {
+    return res.status(400).json({ error: 'Jumlah konversi tidak valid.' });
+  }
+  try {
+    const { data: user, error: findError } = await supabase.from('User').select('userId, earningBalance, mainBalance').eq('telegramId', telegramId).single();
+    if (findError || !user) {
+      return res.status(404).json({ error: 'User tidak ditemukan.' });
+    }
+    if (parseFloat(user.earningBalance) < amountToConvert) {
+      return res.status(400).json({ error: 'Poin Anda tidak mencukupi.' });
+    }
+    const newEarningBalance = parseFloat(user.earningBalance) - amountToConvert;
+    const newMainBalance = parseFloat(user.mainBalance) + amountToConvert;
+    const { data: updatedUser, error: updateError } = await supabase
+      .from('User')
+      .update({
+        earningBalance: newEarningBalance,
+        mainBalance: newMainBalance,
+      })
+      .eq('telegramId', telegramId)
+      .select()
+      .single();
+    if (updateError) throw updateError;
+    res.status(200).json({ message: `Berhasil mengkonversi ${amountToConvert} Poin ke Saldo Utama.`, user: updatedUser });
+  } catch (error) {
+    console.error('Conversion error:', error.message);
+    res.status(500).json({ error: 'Terjadi kesalahan di server saat konversi.' });
+  }
+});
+
+// Menjalankan Server untuk Development Lokal
 const port = process.env.PORT || 3001;
 app.listen(port, () => {
   console.log(`Server lokal berjalan di http://localhost:${port}`);

@@ -3,11 +3,11 @@ import { styles } from '../styles/Dashboard.styles';
 import { HomeIcon, WalletIcon, UserIcon, CheckCircleIcon, TvIcon, UsersIcon, CubeIcon, LinkIcon } from '../icons';
 
 function Dashboard({ user, onUserUpdate, onNavigate }) {
+
   const handleComingSoon = () => {
     window.Telegram?.WebApp?.showAlert('Fitur ini akan segera hadir!');
   };
 
-  // Mengambil dan memformat 3 saldo baru dari objek user
   const mainBalance = parseFloat(user?.mainBalance || 0).toLocaleString('id-ID');
   const advertisingBalance = parseFloat(user?.advertisingBalance || 0).toLocaleString('id-ID');
   const earningBalance = parseFloat(user?.earningBalance || 0).toLocaleString('id-ID');
@@ -15,7 +15,6 @@ function Dashboard({ user, onUserUpdate, onNavigate }) {
 
   return (
     <div style={styles.dashboard}>
-      {/* Header Pengguna (sekarang lebih simpel) */}
       <header style={styles.header}>
         <div style={styles.avatar}>{(username).substring(0, 2).toUpperCase()}</div>
         <div style={styles.userInfo}>
@@ -24,9 +23,6 @@ function Dashboard({ user, onUserUpdate, onNavigate }) {
         </div>
       </header>
 
-      {/* ====================================================== */}
-      {/* KARTU SALDO BARU SESUAI DESAIN ANDA                   */}
-      {/* ====================================================== */}
       <div style={styles.card}>
         <div style={{ marginBottom: '16px' }}>
           <p style={{ margin: 0, fontSize: '14px', color: '#888' }}>Total Saldo Utama</p>
@@ -34,7 +30,6 @@ function Dashboard({ user, onUserUpdate, onNavigate }) {
             Rp {mainBalance}
           </p>
         </div>
-        
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', borderTop: '1px solid #eee', paddingTop: '16px' }}>
           <div>
             <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>Saldo Iklan</p>
@@ -45,14 +40,12 @@ function Dashboard({ user, onUserUpdate, onNavigate }) {
             <p style={{ margin: '4px 0 0 0', fontSize: '16px', fontWeight: '600' }}>{earningBalance} Poin</p>
           </div>
         </div>
-
         <div style={{ display: 'flex', gap: '10px' }}>
           <button onClick={handleComingSoon} style={{...styles.taskButton, flex: 1, justifyContent: 'center', padding: '10px'}}>Deposit</button>
-          <button onClick={handleComingSoon} style={{...styles.taskButton, flex: 1, justifyContent: 'center', padding: '10px'}}>Withdraw</button>
+          <button onClick={() => onNavigate('withdraw')} style={{...styles.taskButton, flex: 1, justifyContent: 'center', padding: '10px'}}>Withdraw</button>
         </div>
       </div>
       
-      {/* Kartu Tugas Harian (tidak berubah) */}
       <div style={styles.card}>
         <h2 style={styles.cardTitle}>Tugas Harian</h2>
         <button onClick={handleComingSoon} style={styles.taskButton}>
@@ -63,24 +56,22 @@ function Dashboard({ user, onUserUpdate, onNavigate }) {
         </button>
       </div>
 
-      {/* ... (Kartu lain dan Navbar tetap sama seperti sebelumnya) ... */}
-
       <nav style={styles.navbar}>
         <button style={{...styles.navButton, ...styles.activeNav}}>
           <HomeIcon style={styles.navIcon} />
           <span style={styles.navText}>Home</span>
         </button>
         <button onClick={() => onNavigate('tasks')} style={styles.navButton}>
-          <span style={styles.navIcon}>📝</span>
-          <span style={styles.navText}>Tasks</span>
+          <span style={{fontSize: '24px', marginBottom: '4px'}}>📝</span>
+          <span style={{fontSize: '11px', fontWeight: '500'}}>Tasks</span>
         </button>
         <button onClick={() => onNavigate('ads')} style={styles.navButton}>
-          <span style={styles.navIcon}>📢</span>
-          <span style={styles.navText}>Ads</span>
+          <span style={{fontSize: '24px', marginBottom: '4px'}}>📢</span>
+          <span style={{fontSize: '11px', fontWeight: '500'}}>Ads</span>
         </button>
         <button onClick={() => onNavigate('refer')} style={styles.navButton}>
-          <span style={styles.navIcon}>👥</span>
-          <span style={styles.navText}>Refer</span>
+          <span style={{fontSize: '24px', marginBottom: '4px'}}>👥</span>
+          <span style={{fontSize: '11px', fontWeight: '500'}}>Refer</span>
         </button>
       </nav>
     </div>

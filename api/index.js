@@ -3,17 +3,14 @@ import 'dotenv/config';
 import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
 
-// Inisialisasi Aplikasi Express
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Inisialisasi Supabase Client
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Fungsi untuk membuat kode referral acak
 const generateReferralCode = (length = 8) => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let result = '';
@@ -23,18 +20,14 @@ const generateReferralCode = (length = 8) => {
   return result;
 };
 
-// =================================================================
 // --- API ENDPOINTS ---
-// =================================================================
 
-// Endpoint #1: Tes dasar untuk API
 app.get('/api', (req, res) => {
   res.send('✅ Backend API aktif dan berjalan!');
 });
 
-// Endpoint #2: Autentikasi & Registrasi Pengguna -- TELAH DIPERBARUI
 app.post('/api/auth', async (req, res) => {
-  const { telegramId, username, refCode } = req.body; // Terima refCode opsional
+  const { telegramId, username, refCode } = req.body;
   if (!telegramId) {
     return res.status(400).json({ error: 'telegramId dibutuhkan' });
   }
@@ -42,34 +35,40 @@ app.post('/api/auth', async (req, res) => {
   try {
     let { data: user } = await supabase.from('User').select('*').eq('telegramId', telegramId).single();
 
-    // Jika user tidak ada, buat user baru
-    if (!user) {
+    if (user) {
+      // --- PERBAIKAN UNTUK PENGGUNA LAMA ---
+      // Jika pengguna sudah ada tapi belum punya kode referral, buatkan satu.
+      if (!user.referralCode) {
+        const newReferralCode = generateReferralCode();
+        const { data: updatedUser, error: updateError } = await supabase
+          .from('User')
+          .update({ referralCode: newReferralCode })
+          .eq('telegramId', telegramId)
+          .select()
+          .single();
+        
+        if (updateError) throw updateError;
+        user = updatedUser; // Gunakan data user yang sudah terupdate
+      }
+      // --- AKHIR PERBAIKAN ---
+    } else {
+      // Logika untuk pengguna baru (tetap sama)
       let referredById = null;
-      // Jika ada kode referral, cari pengundangnya
       if (refCode) {
         const { data: referrer } = await supabase.from('User').select('userId, balance').eq('referralCode', refCode).single();
         if (referrer) {
           referredById = referrer.userId;
-          // Beri bonus pada pengundang
           const REFERRAL_BONUS = 500;
           const newReferrerBalance = parseFloat(referrer.balance) + REFERRAL_BONUS;
           await supabase.from('User').update({ balance: newReferrerBalance }).eq('userId', referrer.userId);
         }
       }
-
-      // Buat user baru dengan kode referral unik dan data pengundang (jika ada)
       const newUserReferralCode = generateReferralCode();
       const { data: newUser, error: createError } = await supabase
         .from('User')
-        .insert([{ 
-            telegramId, 
-            username, 
-            referralCode: newUserReferralCode, 
-            referredBy: referredById 
-        }])
+        .insert([{ telegramId, username, referralCode: newUserReferralCode, referredBy: referredById }])
         .select()
         .single();
-
       if (createError) throw createError;
       user = newUser;
     }
@@ -82,10 +81,10 @@ app.post('/api/auth', async (req, res) => {
   }
 });
 
-// ... (Endpoint /api/set-role, /api/check-in, /api/reward-ad tetap sama persis)
+// ... (Endpoint lainnya: /api/set-role, /api/check-in, /api/reward-ad TETAP SAMA)
 // ... JANGAN HAPUS DARI FILE ANDA
 
-// --- Menjalankan Server untuk Development Lokal ---
+// --- Menjalankan Server ---
 const port = process.env.PORT || 3001;
 app.listen(port, () => {
   console.log(`Server lokal berjalan di http://localhost:${port}`);

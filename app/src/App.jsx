@@ -1,52 +1,31 @@
-// src/App.jsx
 import { useState, useEffect } from 'react';
-import axios from 'axios';
-
-// Ganti dengan URL Vercel Anda yang sebenarnya!
-const API_URL = "https://nama-proyek-anda.vercel.app";
+import Dashboard from './components/Dashboard';
+import Login from './components/Login';
 
 function App() {
-  const [users, setUsers] = useState([]); // State untuk menyimpan daftar pengguna
-  const [loading, setLoading] = useState(true); // State untuk status loading
-  const [error, setError] = useState(null); // State untuk menyimpan pesan error
+  const [currentUser, setCurrentUser] = useState(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  // useEffect akan berjalan saat komponen pertama kali dimuat
+  // Efek ini hanya untuk inisialisasi awal
   useEffect(() => {
-    // Fungsi untuk mengambil data dari API
-    const fetchUsers = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/api/users`);
-        setUsers(response.data); // Simpan data ke state
-      } catch (err) {
-        setError("Gagal memuat data pengguna."); // Simpan pesan error
-        console.error(err);
-      } finally {
-        setLoading(false); // Hentikan loading, apapun hasilnya
-      }
-    };
+    try {
+      // Memberi tahu Telegram bahwa aplikasi siap
+      window.Telegram.WebApp.ready();
+    } catch (e) {
+      setError("Aplikasi harus dijalankan dari dalam Telegram.");
+      console.error(e);
+    }
+  }, []);
 
-    fetchUsers();
-  }, []); // Array kosong artinya efek ini hanya berjalan sekali
-
-  if (loading) return <p>Sedang memuat...</p>;
-  if (error) return <p>{error}</p>;
-
-  return (
-    <div>
-      <h1>Daftar Pengguna Terdaftar</h1>
-      {users.length === 0 ? (
-        <p>Belum ada pengguna.</p>
-      ) : (
-        <ul>
-          {users.map((user) => (
-            <li key={user.userId}>
-              ID: {user.telegramId} - Username: {user.username || 'N/A'}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+  // Tampilkan halaman Login jika belum ada user
+  if (!currentUser) {
+    return <Login onLoginSuccess={setCurrentUser} onError={setError} onLoadingChange={setLoading} />;
+  }
+  
+  // Tampilkan dasbor jika sudah berhasil login
+  return <Dashboard user={currentUser} />;
 }
 
 export default App;
+

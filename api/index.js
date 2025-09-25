@@ -1,9 +1,11 @@
 import express from 'express';
 import 'dotenv/config';
+import cors from 'cors'; // <-- Impor cors
 import { createClient } from '@supabase/supabase-js';
 
 // Inisialisasi
 const app = express();
+app.use(cors()); // <-- Terapkan cors untuk semua request
 app.use(express.json());
 
 // Koneksi Supabase
@@ -13,32 +15,40 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 // --- API ENDPOINTS ---
 
-// Endpoint dasar untuk tes
 app.get('/api', (req, res) => {
   res.send('✅ Backend API aktif dan berjalan!');
 });
 
-// Endpoint untuk mendapatkan semua user
-app.get('/api/users', async (req, res) => {
-  const { data, error } = await supabase.from('User').select('*');
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
-});
-
-// Endpoint untuk membuat user baru
-app.post('/api/users', async (req, res) => {
+app.post('/api/auth', async (req, res) => {
   const { telegramId, username } = req.body;
   if (!telegramId) {
     return res.status(400).json({ error: 'telegramId dibutuhkan' });
   }
 
-  const { data, error } = await supabase
-    .from('User')
-    .insert([{ telegramId, username }])
-    .select();
+  try {
+    let { data: user } = await supabase
+      .from('User')
+      .select('*')
+      .eq('telegramId', telegramId)
+      .single();
 
-  if (error) return res.status(500).json({ error: error.message });
-  res.status(201).json(data[0]);
+    if (!user) {
+      console.log(`User baru terdeteksi: ${telegramId}, membuat entri baru...`);
+      const { data: newUser, error: createError } = await supabase
+        .from('User')
+        .insert([{ telegramId, username }])
+        .select()
+        .single();
+
+      if (createError) throw createError;
+      user = newUser;
+    }
+
+    res.status(200).json(user);
+  } catch (error) {
+    console.error('Authentication error:', error.message);
+    res.status(500).json({ error: 'Terjadi kesalahan di server', details: error.message });
+  }
 });
 
 // --- Menjalankan Server ---
@@ -48,3 +58,4 @@ app.listen(port, () => {
 });
 
 export default app;
+

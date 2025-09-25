@@ -16,11 +16,17 @@ function App() {
     }
   }, []);
 
+  // Fungsi baru untuk memperbarui data pengguna dari komponen anak
+  const handleUserUpdate = (updatedUserData) => {
+    setCurrentUser(updatedUserData);
+  };
+
   if (!currentUser) {
     return <Login onLoginSuccess={setCurrentUser} onError={setError} onLoadingChange={setLoading} />;
   }
   
-  return <Dashboard user={currentUser} />;
+  // Kirim fungsi handleUserUpdate sebagai prop ke Dashboard
+  return <Dashboard user={currentUser} onUserUpdate={handleUserUpdate} />;
 }
 
 export default App;

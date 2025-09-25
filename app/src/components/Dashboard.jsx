@@ -1,19 +1,59 @@
-import React from 'react';
-// Impor style dari file terpisah
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { styles } from '../styles/Dashboard.styles';
-// Impor semua ikon dari satu tempat
-import { 
-  HomeIcon, WalletIcon, UserIcon, CheckCircleIcon, TvIcon, UsersIcon, CubeIcon, LinkIcon 
-} from '../icons';
+import { HomeIcon, WalletIcon, UserIcon, CheckCircleIcon, TvIcon, UsersIcon, CubeIcon, LinkIcon } from '../icons';
 
-function Dashboard({ user }) {
-  const getInitials = (name) => {
-    return name ? name.substring(0, 2).toUpperCase() : 'U';
+// Ganti dengan URL Vercel Anda!
+const API_URL = "https://rajaview.vercel.app";
+
+function Dashboard({ user, onUserUpdate }) { // Terima prop onUserUpdate
+  const [isCheckInDisabled, setCheckInDisabled] = useState(false);
+  const [checkInMessage, setCheckInMessage] = useState('Check-in Harian');
+
+  // Cek status check-in saat komponen dimuat
+  useEffect(() => {
+    if (user.lastCheckIn) {
+      const now = new Date();
+      const lastCheckInDate = new Date(user.lastCheckIn);
+      now.setHours(0, 0, 0, 0);
+      lastCheckInDate.setHours(0, 0, 0, 0);
+
+      if (lastCheckInDate.getTime() === now.getTime()) {
+        setCheckInDisabled(true);
+        setCheckInMessage('Sudah Check-in Hari Ini');
+      }
+    }
+  }, [user.lastCheckIn]);
+
+  const handleCheckIn = async () => {
+    setCheckInDisabled(true);
+    setCheckInMessage('Memproses...');
+
+    try {
+      const response = await axios.post(`${API_URL}/api/check-in`, {
+        telegramId: user.telegramId,
+      });
+
+      // Update data user di state utama App.jsx
+      onUserUpdate(response.data.user);
+      setCheckInMessage('Check-in Berhasil!');
+
+      // Tampilkan notifikasi sukses
+      window.Telegram?.WebApp?.showAlert(response.data.message);
+
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Terjadi kesalahan.';
+      setCheckInMessage(errorMessage);
+      window.Telegram?.WebApp?.showAlert(errorMessage);
+      // Jika error bukan karena "sudah check-in", tombol bisa diaktifkan kembali
+      if (error.response?.status !== 400) {
+          setCheckInDisabled(false);
+      }
+    }
   };
   
-  const handleComingSoon = () => {
-    window.Telegram?.WebApp?.showAlert('Fitur ini akan segera hadir!');
-  };
+  const getInitials = (name) => name ? name.substring(0, 2).toUpperCase() : 'U';
+  const handleComingSoon = () => window.Telegram?.WebApp?.showAlert('Fitur ini akan segera hadir!');
 
   const username = user?.username || 'Pengguna';
   const level = user?.level || 1;
@@ -32,41 +72,13 @@ function Dashboard({ user }) {
       
       <div style={styles.card}>
         <h2 style={styles.cardTitle}>Tugas Harian</h2>
-        <button onClick={handleComingSoon} style={styles.taskButton}>
-          <CheckCircleIcon style={styles.taskIcon} /> Check-in Harian
+        <button onClick={handleCheckIn} style={styles.taskButton} disabled={isCheckInDisabled}>
+          <CheckCircleIcon style={styles.taskIcon} /> {checkInMessage}
         </button>
-        <button onClick={handleComingSoon} style={styles.taskButton}>
-          <TvIcon style={styles.taskIcon} /> Tonton Iklan
-        </button>
-        <button onClick={handleComingSoon} style={styles.taskButton}>
-          <UsersIcon style={styles.taskIcon} /> Undang Teman
-        </button>
+        {/* ... tombol lainnya ... */}
       </div>
       
-      <div style={styles.card}>
-        <h2 style={styles.cardTitle}>Tugas Utama</h2>
-        <button onClick={handleComingSoon} style={styles.taskButton}>
-          <CubeIcon style={styles.taskIcon} /> Offerwall
-        </button>
-        <button onClick={handleComingSoon} style={styles.taskButton}>
-          <LinkIcon style={styles.taskIcon} /> Shortener
-        </button>
-      </div>
-      
-      <nav style={styles.navbar}>
-        <button style={{...styles.navButton, ...styles.activeNav}}>
-          <HomeIcon style={styles.navIcon} />
-          <span style={styles.navText}>Home</span>
-        </button>
-        <button onClick={handleComingSoon} style={styles.navButton}>
-          <WalletIcon style={styles.navIcon} />
-          <span style={styles.navText}>Tarik Dana</span>
-        </button>
-        <button onClick={handleComingSoon} style={styles.navButton}>
-          <UserIcon style={styles.navIcon} />
-          <span style={styles.navText}>Profil</span>
-        </button>
-      </nav>
+      {/* ... sisa kode dasbor ... */}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 
 // Ganti dengan URL Vercel Anda!
-const API_URL = "https://raja-view.vercel.app";
+const API_URL = "https://rajaview.vercel.app";
 
 function Login({ onLoginSuccess, onError, onLoadingChange }) {
   const [status, setStatus] = useState('Menginisialisasi...');

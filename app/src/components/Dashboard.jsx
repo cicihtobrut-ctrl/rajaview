@@ -4,7 +4,7 @@ import { styles } from '../styles/Dashboard.styles';
 import { HomeIcon, WalletIcon, UserIcon, CheckCircleIcon, TvIcon, UsersIcon, CubeIcon, LinkIcon } from '../icons';
 
 // GANTI DENGAN URL VERCEL ANDA!
-const API_URL = "https://raja-view.vercel.app";
+const API_URL = "https://rajaview.vercel.app";
 
 function Dashboard({ user, onUserUpdate }) {
   const [isCheckInDisabled, setCheckInDisabled] = useState(false);

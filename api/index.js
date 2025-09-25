@@ -30,45 +30,38 @@ app.post('/api/auth', async (req, res) => {
   }
 
   try {
-    // Cek apakah user sudah ada
     let { data: user } = await supabase
       .from('User')
       .select('*')
       .eq('telegramId', telegramId)
       .single();
 
-    // Jika tidak ada, buat user baru dengan role default 'new'
     if (!user) {
       const { data: newUser, error: createError } = await supabase
         .from('User')
-        .insert([{ telegramId, username }]) // Role akan otomatis 'new' dari database
+        .insert([{ telegramId, username }])
         .select()
         .single();
 
       if (createError) throw createError;
       user = newUser;
     }
-
     res.status(200).json(user);
   } catch (error) {
-    // Abaikan error "PGRST116" yang berarti baris tidak ditemukan (ini normal jika user baru)
     if (error.code !== 'PGRST116') {
       console.error('Authentication error:', error.message);
       return res.status(500).json({ error: 'Terjadi kesalahan di server', details: error.message });
     }
-    // Jika errornya PGRST116, berarti user tidak ada, dan logika di atas sudah menanganinya.
-    // Kita lanjutkan ke proses pembuatan user baru di dalam blok 'if (!user)'
   }
 });
 
-// Endpoint #3: Mengatur Peran Pengguna (Publisher/Advertiser)
+// Endpoint #3: Mengatur Peran Pengguna (Publisher/Advertiser) -- TELAH DIPERBAIKI
 app.post('/api/set-role', async (req, res) => {
   const { telegramId, role } = req.body;
 
   if (!telegramId || !role) {
     return res.status(400).json({ error: 'telegramId dan role dibutuhkan' });
   }
-
   if (role !== 'publisher' && role !== 'advertiser') {
     return res.status(400).json({ error: 'Peran tidak valid.' });
   }
@@ -78,12 +71,16 @@ app.post('/api/set-role', async (req, res) => {
       .from('User')
       .update({ role: role })
       .eq('telegramId', telegramId)
-      .select()
-      .single();
+      .select(); // <-- Menghapus .single()
 
+    // Cek jika update gagal atau tidak ada user yang ter-update
     if (error) throw error;
+    if (!updatedUser || updatedUser.length === 0) {
+      return res.status(404).json({ error: 'User tidak ditemukan untuk diperbarui.' });
+    }
     
-    res.status(200).json(updatedUser);
+    // Kirim data user yang berhasil diupdate (ambil item pertama dari array)
+    res.status(200).json(updatedUser[0]);
 
   } catch (error) {
     console.error('Set role error:', error.message);
@@ -99,7 +96,6 @@ app.post('/api/check-in', async (req, res) => {
   }
 
   try {
-    // 1. Ambil data user
     const { data: user, error: findError } = await supabase
       .from('User')
       .select('userId, balance, lastCheckIn')
@@ -110,7 +106,6 @@ app.post('/api/check-in', async (req, res) => {
       return res.status(404).json({ error: 'User tidak ditemukan.' });
     }
 
-    // 2. Cek apakah user sudah check-in hari ini
     const now = new Date();
     if (user.lastCheckIn) {
       const lastCheckInDate = new Date(user.lastCheckIn);
@@ -122,8 +117,7 @@ app.post('/api/check-in', async (req, res) => {
       }
     }
 
-    // 3. Jika belum, lakukan proses check-in
-    const checkInReward = 100; // Jumlah reward
+    const checkInReward = 100;
     const newBalance = parseFloat(user.balance) + checkInReward;
 
     const { data: updatedUser, error: updateError } = await supabase

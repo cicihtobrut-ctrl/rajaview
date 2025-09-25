@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_URL = "https://raja-view.vercel.app"; // Pastikan ini benar!
+const API_URL = "https://rajaview.vercel.app"; // Pastikan ini benar!
 
 function RoleSelection({ user, onRoleSelected }) {
   const [loading, setLoading] = useState(false);

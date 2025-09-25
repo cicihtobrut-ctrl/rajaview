@@ -7,10 +7,8 @@ function App() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // Efek ini hanya untuk inisialisasi awal
   useEffect(() => {
     try {
-      // Memberi tahu Telegram bahwa aplikasi siap
       window.Telegram.WebApp.ready();
     } catch (e) {
       setError("Aplikasi harus dijalankan dari dalam Telegram.");
@@ -18,12 +16,10 @@ function App() {
     }
   }, []);
 
-  // Tampilkan halaman Login jika belum ada user
   if (!currentUser) {
     return <Login onLoginSuccess={setCurrentUser} onError={setError} onLoadingChange={setLoading} />;
   }
   
-  // Tampilkan dasbor jika sudah berhasil login
   return <Dashboard user={currentUser} />;
 }
 

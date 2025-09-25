@@ -1,12 +1,12 @@
 import express from 'express';
 import 'dotenv/config';
-import cors from 'cors'; // <-- Impor cors
+import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
 
 // Inisialisasi
 const app = express();
-app.use(cors()); // <-- Terapkan cors untuk semua request
-app.use(express.json());
+app.use(cors()); // Mengizinkan request dari domain lain
+app.use(express.json()); // Membaca body JSON
 
 // Koneksi Supabase
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -33,7 +33,6 @@ app.post('/api/auth', async (req, res) => {
       .single();
 
     if (!user) {
-      console.log(`User baru terdeteksi: ${telegramId}, membuat entri baru...`);
       const { data: newUser, error: createError } = await supabase
         .from('User')
         .insert([{ telegramId, username }])
@@ -51,11 +50,10 @@ app.post('/api/auth', async (req, res) => {
   }
 });
 
-// --- Menjalankan Server ---
+// --- Menjalankan Server (hanya untuk local dev) ---
 const port = process.env.PORT || 3001;
 app.listen(port, () => {
-  console.log(`Server berjalan di http://localhost:${port}`);
+  console.log(`Server lokal berjalan di http://localhost:${port}`);
 });
 
 export default app;
-

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 
-// Ganti dengan URL Vercel Anda!
+// GANTI DENGAN URL VERCEL ANDA YANG SEBENARNYA!
 const API_URL = "https://rajaview.vercel.app";
 
 function Login({ onLoginSuccess, onError, onLoadingChange }) {
@@ -10,9 +10,8 @@ function Login({ onLoginSuccess, onError, onLoadingChange }) {
   useEffect(() => {
     onLoadingChange(true);
     const authenticate = async () => {
-      // Pastikan objek Telegram Web App sudah ada
       if (typeof window.Telegram === 'undefined' || !window.Telegram.WebApp) {
-        setStatus("Error: Script Telegram tidak ditemukan.");
+        setStatus("Error: Gagal memuat script Telegram.");
         onError("Aplikasi ini harus dibuka dari Telegram.");
         onLoadingChange(false);
         return;
@@ -22,7 +21,7 @@ function Login({ onLoginSuccess, onError, onLoadingChange }) {
       const user = tg.initDataUnsafe?.user;
       
       if (!user) {
-        setStatus("Mode Debug: Tidak ada data user Telegram. Buka dari aplikasi Telegram asli untuk fungsionalitas penuh.");
+        setStatus("Mode Debug: Tidak ada data user Telegram. Buka dari aplikasi Telegram asli.");
         onError("Gagal mengambil data user.");
         onLoadingChange(false);
         return;
@@ -37,7 +36,7 @@ function Login({ onLoginSuccess, onError, onLoadingChange }) {
         
         onLoginSuccess(response.data);
       } catch (err) {
-        setStatus(`Error: Gagal terhubung ke server. ${err.message}`);
+        setStatus(`Error: Gagal terhubung ke server. (${err.message})`);
         onError(err.message);
         console.error(err);
       } finally {
@@ -49,7 +48,7 @@ function Login({ onLoginSuccess, onError, onLoadingChange }) {
   }, [onLoginSuccess, onError, onLoadingChange]);
 
   return (
-    <div style={{ padding: '20px', textAlign: 'center' }}>
+    <div style={{ padding: '20px', textAlign: 'center', fontFamily: 'sans-serif' }}>
       <p>{status}</p>
     </div>
   );

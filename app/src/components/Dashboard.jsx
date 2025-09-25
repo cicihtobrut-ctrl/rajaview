@@ -3,21 +3,20 @@ import axios from 'axios';
 import { styles } from '../styles/Dashboard.styles';
 import { HomeIcon, WalletIcon, UserIcon, CheckCircleIcon, TvIcon, UsersIcon, CubeIcon, LinkIcon } from '../icons';
 
-// Ganti dengan URL Vercel Anda!
-const API_URL = "https://rajaview.vercel.app";
+// GANTI DENGAN URL VERCEL ANDA!
+const API_URL = "https://raja-view.vercel.app";
 
-function Dashboard({ user, onUserUpdate }) { // Terima prop onUserUpdate
+function Dashboard({ user, onUserUpdate }) {
   const [isCheckInDisabled, setCheckInDisabled] = useState(false);
   const [checkInMessage, setCheckInMessage] = useState('Check-in Harian');
+  const [adStatus, setAdStatus] = useState('Tonton Iklan');
 
-  // Cek status check-in saat komponen dimuat
   useEffect(() => {
     if (user.lastCheckIn) {
       const now = new Date();
       const lastCheckInDate = new Date(user.lastCheckIn);
       now.setHours(0, 0, 0, 0);
       lastCheckInDate.setHours(0, 0, 0, 0);
-
       if (lastCheckInDate.getTime() === now.getTime()) {
         setCheckInDisabled(true);
         setCheckInMessage('Sudah Check-in Hari Ini');
@@ -28,31 +27,64 @@ function Dashboard({ user, onUserUpdate }) { // Terima prop onUserUpdate
   const handleCheckIn = async () => {
     setCheckInDisabled(true);
     setCheckInMessage('Memproses...');
-
     try {
-      const response = await axios.post(`${API_URL}/api/check-in`, {
-        telegramId: user.telegramId,
-      });
-
-      // Update data user di state utama App.jsx
+      const response = await axios.post(`${API_URL}/api/check-in`, { telegramId: user.telegramId });
       onUserUpdate(response.data.user);
       setCheckInMessage('Check-in Berhasil!');
-
-      // Tampilkan notifikasi sukses
       window.Telegram?.WebApp?.showAlert(response.data.message);
-
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Terjadi kesalahan.';
       setCheckInMessage(errorMessage);
       window.Telegram?.WebApp?.showAlert(errorMessage);
-      // Jika error bukan karena "sudah check-in", tombol bisa diaktifkan kembali
       if (error.response?.status !== 400) {
-          setCheckInDisabled(false);
+        setCheckInDisabled(false);
       }
     }
   };
-  
-  const getInitials = (name) => name ? name.substring(0, 2).toUpperCase() : 'U';
+
+  // --- FUNGSI IKLAN YANG SUDAH DISINKRONKAN ---
+  const handleWatchAd = () => {
+    setAdStatus('Memuat iklan...');
+
+    const rewardUser = async () => {
+      try {
+        const response = await axios.post(`${API_URL}/api/reward-ad`, { telegramId: user.telegramId });
+        onUserUpdate(response.data.user);
+        window.Telegram?.WebApp?.showAlert(response.data.message);
+      } catch (error) {
+        const errorMessage = error.response?.data?.message || 'Gagal mendapatkan reward.';
+        window.Telegram?.WebApp?.showAlert(errorMessage);
+      } finally {
+        setAdStatus('Tonton Iklan');
+      }
+    };
+
+    try {
+      // Pastikan fungsi show_9929126 ada sebelum dipanggil
+      if (typeof window.show_9929126 === 'function') {
+        window.show_9929126()
+          .then(() => {
+            // Ini hanya akan berjalan JIKA user selesai menonton/menutup iklan
+            console.log("Iklan selesai ditonton, memberikan reward...");
+            rewardUser();
+          })
+          .catch((e) => {
+            // Ini berjalan jika ada error saat memutar iklan
+            console.error("Monetag ad error:", e);
+            window.Telegram?.WebApp?.showAlert("Iklan gagal dimuat. Coba lagi nanti.");
+            setAdStatus('Tonton Iklan');
+          });
+      } else {
+        throw new Error("Fungsi iklan Monetag tidak ditemukan.");
+      }
+    } catch (e) {
+      console.error("Gagal menjalankan script iklan:", e);
+      window.Telegram?.WebApp?.showAlert("Gagal memulai iklan. Pastikan script sudah benar.");
+      setAdStatus('Tonton Iklan');
+    }
+  };
+
+  const getInitials = (name) => (name ? name.substring(0, 2).toUpperCase() : 'U');
   const handleComingSoon = () => window.Telegram?.WebApp?.showAlert('Fitur ini akan segera hadir!');
 
   const username = user?.username || 'Pengguna';
@@ -75,10 +107,38 @@ function Dashboard({ user, onUserUpdate }) { // Terima prop onUserUpdate
         <button onClick={handleCheckIn} style={styles.taskButton} disabled={isCheckInDisabled}>
           <CheckCircleIcon style={styles.taskIcon} /> {checkInMessage}
         </button>
-        {/* ... tombol lainnya ... */}
+        <button onClick={handleWatchAd} style={styles.taskButton} disabled={adStatus !== 'Tonton Iklan'}>
+          <TvIcon style={styles.taskIcon} /> {adStatus}
+        </button>
+        <button onClick={handleComingSoon} style={styles.taskButton}>
+          <UsersIcon style={styles.taskIcon} /> Undang Teman
+        </button>
       </div>
       
-      {/* ... sisa kode dasbor ... */}
+      <div style={styles.card}>
+        <h2 style={styles.cardTitle}>Tugas Utama</h2>
+        <button onClick={handleComingSoon} style={styles.taskButton}>
+          <CubeIcon style={styles.taskIcon} /> Offerwall
+        </button>
+        <button onClick={handleComingSoon} style={styles.taskButton}>
+          <LinkIcon style={styles.taskIcon} /> Shortener
+        </button>
+      </div>
+      
+      <nav style={styles.navbar}>
+        <button style={{...styles.navButton, ...styles.activeNav}}>
+          <HomeIcon style={styles.navIcon} />
+          <span style={styles.navText}>Home</span>
+        </button>
+        <button onClick={handleComingSoon} style={styles.navButton}>
+          <WalletIcon style={styles.navIcon} />
+          <span style={styles.navText}>Tarik Dana</span>
+        </button>
+        <button onClick={handleComingSoon} style={styles.navButton}>
+          <UserIcon style={styles.navIcon} />
+          <span style={styles.navText}>Profil</span>
+        </button>
+      </nav>
     </div>
   );
 }

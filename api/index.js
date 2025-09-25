@@ -28,21 +28,10 @@ app.post('/api/auth', async (req, res) => {
   if (!telegramId) {
     return res.status(400).json({ error: 'telegramId dibutuhkan' });
   }
-
   try {
-    let { data: user } = await supabase
-      .from('User')
-      .select('*')
-      .eq('telegramId', telegramId)
-      .single();
-
+    let { data: user } = await supabase.from('User').select('*').eq('telegramId', telegramId).single();
     if (!user) {
-      const { data: newUser, error: createError } = await supabase
-        .from('User')
-        .insert([{ telegramId, username }])
-        .select()
-        .single();
-
+      const { data: newUser, error: createError } = await supabase.from('User').insert([{ telegramId, username }]).select().single();
       if (createError) throw createError;
       user = newUser;
     }
@@ -55,33 +44,22 @@ app.post('/api/auth', async (req, res) => {
   }
 });
 
-// Endpoint #3: Mengatur Peran Pengguna (Publisher/Advertiser) -- TELAH DIPERBAIKI
+// Endpoint #3: Mengatur Peran Pengguna
 app.post('/api/set-role', async (req, res) => {
   const { telegramId, role } = req.body;
-
   if (!telegramId || !role) {
     return res.status(400).json({ error: 'telegramId dan role dibutuhkan' });
   }
   if (role !== 'publisher' && role !== 'advertiser') {
     return res.status(400).json({ error: 'Peran tidak valid.' });
   }
-
   try {
-    const { data: updatedUser, error } = await supabase
-      .from('User')
-      .update({ role: role })
-      .eq('telegramId', telegramId)
-      .select(); // <-- Menghapus .single()
-
-    // Cek jika update gagal atau tidak ada user yang ter-update
+    const { data: updatedUser, error } = await supabase.from('User').update({ role: role }).eq('telegramId', telegramId).select();
     if (error) throw error;
     if (!updatedUser || updatedUser.length === 0) {
       return res.status(404).json({ error: 'User tidak ditemukan untuk diperbarui.' });
     }
-    
-    // Kirim data user yang berhasil diupdate (ambil item pertama dari array)
     res.status(200).json(updatedUser[0]);
-
   } catch (error) {
     console.error('Set role error:', error.message);
     res.status(500).json({ error: 'Gagal memperbarui peran pengguna.' });
@@ -94,52 +72,91 @@ app.post('/api/check-in', async (req, res) => {
   if (!telegramId) {
     return res.status(400).json({ error: 'telegramId dibutuhkan' });
   }
-
   try {
-    const { data: user, error: findError } = await supabase
-      .from('User')
-      .select('userId, balance, lastCheckIn')
-      .eq('telegramId', telegramId)
-      .single();
-
+    const { data: user, error: findError } = await supabase.from('User').select('userId, balance, lastCheckIn').eq('telegramId', telegramId).single();
     if (findError || !user) {
       return res.status(404).json({ error: 'User tidak ditemukan.' });
     }
-
     const now = new Date();
     if (user.lastCheckIn) {
       const lastCheckInDate = new Date(user.lastCheckIn);
       now.setHours(0, 0, 0, 0);
       lastCheckInDate.setHours(0, 0, 0, 0);
-
       if (lastCheckInDate.getTime() === now.getTime()) {
         return res.status(400).json({ message: 'Anda sudah melakukan check-in hari ini.' });
       }
     }
-
     const checkInReward = 100;
     const newBalance = parseFloat(user.balance) + checkInReward;
-
-    const { data: updatedUser, error: updateError } = await supabase
-      .from('User')
-      .update({ balance: newBalance, lastCheckIn: new Date().toISOString() })
-      .eq('telegramId', telegramId)
-      .select()
-      .single();
-
+    const { data: updatedUser, error: updateError } = await supabase.from('User').update({ balance: newBalance, lastCheckIn: new Date().toISOString() }).eq('telegramId', telegramId).select().single();
     if (updateError) throw updateError;
-
     res.status(200).json({ message: `Check-in berhasil! Anda mendapatkan ${checkInReward} poin.`, user: updatedUser });
-
   } catch (error) {
     console.error('Check-in error:', error.message);
     res.status(500).json({ error: 'Terjadi kesalahan di server saat check-in.' });
   }
 });
 
-// =================================================================
-// --- Menjalankan Server untuk Development Lokal ---
-// =================================================================
+// Endpoint #5: Reward Menonton Iklan (BARU)
+app.post('/api/reward-ad', async (req, res) => {
+    const { telegramId } = req.body;
+    if (!telegramId) {
+        return res.status(400).json({ error: 'telegramId dibutuhkan' });
+    }
+
+    const AD_REWARD = 10; // Reward per iklan
+    const DAILY_AD_LIMIT = 100; // Batas iklan per hari
+
+    try {
+        let { data: user, error: findError } = await supabase
+            .from('User')
+            .select('userId, balance, adsWatchedToday, lastAdWatchedAt')
+            .eq('telegramId', telegramId)
+            .single();
+
+        if (findError) throw findError;
+
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        let adsWatched = user.adsWatchedToday;
+        if (user.lastAdWatchedAt) {
+            const lastWatchDate = new Date(user.lastAdWatchedAt);
+            if (lastWatchDate < today) {
+                adsWatched = 0; // Reset jika terakhir nonton adalah kemarin
+            }
+        }
+
+        if (adsWatched >= DAILY_AD_LIMIT) {
+            return res.status(400).json({ message: 'Anda telah mencapai batas menonton iklan hari ini.' });
+        }
+
+        const newBalance = parseFloat(user.balance) + AD_REWARD;
+        const newAdsWatchedCount = adsWatched + 1;
+
+        const { data: updatedUser, error: updateError } = await supabase
+            .from('User')
+            .update({
+                balance: newBalance,
+                adsWatchedToday: newAdsWatchedCount,
+                lastAdWatchedAt: new Date().toISOString(),
+            })
+            .eq('telegramId', telegramId)
+            .select()
+            .single();
+
+        if (updateError) throw updateError;
+        
+        res.status(200).json({ message: `Anda mendapatkan ${AD_REWARD} poin!`, user: updatedUser });
+
+    } catch (error) {
+        console.error('Ad reward error:', error.message);
+        res.status(500).json({ error: 'Terjadi kesalahan di server.' });
+    }
+});
+
+
+// Menjalankan Server untuk Development Lokal
 const port = process.env.PORT || 3001;
 app.listen(port, () => {
   console.log(`Server lokal berjalan di http://localhost:${port}`);

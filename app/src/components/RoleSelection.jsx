@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_URL = "https://raja-view.vercel.app"; // Ganti dengan URL Anda!
+const API_URL = "https://raja-view.vercel.app"; // Pastikan ini benar!
 
 function RoleSelection({ user, onRoleSelected }) {
   const [loading, setLoading] = useState(false);
@@ -13,13 +13,22 @@ function RoleSelection({ user, onRoleSelected }) {
         telegramId: user.telegramId,
         role: role,
       });
-      onRoleSelected(response.data); // Kirim data user yang sudah di-update
+      onRoleSelected(response.data);
     } catch (error) {
       console.error("Gagal memilih peran:", error);
-      window.Telegram?.WebApp?.showAlert('Gagal memilih peran. Coba lagi.');
-    } finally {
-      setLoading(false);
-    }
+
+      // --- INI BAGIAN BARU YANG PENTING ---
+      // Ambil pesan error yang lebih detail dari server
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message;
+      
+      // Tampilkan pesan error yang lebih detail di pop-up
+      window.Telegram?.WebApp?.showAlert(`Gagal memilih peran: ${errorMessage}`, () => {
+        setLoading(false); // Aktifkan lagi tombol setelah pop-up ditutup
+      });
+      // --- AKHIR BAGIAN BARU ---
+
+    } 
+    // setLoading(false) dipindahkan ke dalam callback showAlert
   };
 
   return (

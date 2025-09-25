@@ -1,32 +1,39 @@
-import { useState, useEffect } from 'react';
-import Dashboard from './components/Dashboard';
+import { useState } from 'react';
 import Login from './components/Login';
+import RoleSelection from './components/RoleSelection';
+import Dashboard from './components/Dashboard';
+import AdvertiserDashboard from './components/AdvertiserDashboard';
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    try {
-      window.Telegram.WebApp.ready();
-    } catch (e) {
-      setError("Aplikasi harus dijalankan dari dalam Telegram.");
-      console.error(e);
-    }
-  }, []);
-
-  // Fungsi baru untuk memperbarui data pengguna dari komponen anak
   const handleUserUpdate = (updatedUserData) => {
     setCurrentUser(updatedUserData);
   };
-
+  
+  // Tahap 1: Login & ambil data user
   if (!currentUser) {
     return <Login onLoginSuccess={setCurrentUser} onError={setError} onLoadingChange={setLoading} />;
   }
+
+  // Tahap 2: Jika user baru, tampilkan pemilihan peran
+  if (currentUser.role === 'new') {
+    return <RoleSelection user={currentUser} onRoleSelected={handleUserUpdate} />;
+  }
   
-  // Kirim fungsi handleUserUpdate sebagai prop ke Dashboard
-  return <Dashboard user={currentUser} onUserUpdate={handleUserUpdate} />;
+  // Tahap 3: Jika sudah punya peran, tampilkan dasbor yang sesuai
+  if (currentUser.role === 'publisher') {
+    return <Dashboard user={currentUser} onUserUpdate={handleUserUpdate} />;
+  }
+  
+  if (currentUser.role === 'advertiser') {
+    return <AdvertiserDashboard user={currentUser} />;
+  }
+
+  // Fallback jika ada status peran yang tidak dikenali
+  return <p>Status akun tidak valid.</p>;
 }
 
 export default App;

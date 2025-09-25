@@ -3,22 +3,26 @@ import 'dotenv/config';
 import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
 
-// Inisialisasi
+// Inisialisasi Aplikasi Express
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Koneksi Supabase
+// Inisialisasi Supabase Client
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// =================================================================
 // --- API ENDPOINTS ---
+// =================================================================
 
+// Endpoint #1: Tes dasar untuk API
 app.get('/api', (req, res) => {
   res.send('✅ Backend API aktif dan berjalan!');
 });
 
+// Endpoint #2: Autentikasi & Registrasi Pengguna
 app.post('/api/auth', async (req, res) => {
   const { telegramId, username } = req.body;
   if (!telegramId) {
@@ -26,16 +30,18 @@ app.post('/api/auth', async (req, res) => {
   }
 
   try {
+    // Cek apakah user sudah ada
     let { data: user } = await supabase
       .from('User')
       .select('*')
       .eq('telegramId', telegramId)
       .single();
 
+    // Jika tidak ada, buat user baru dengan role default 'new'
     if (!user) {
       const { data: newUser, error: createError } = await supabase
         .from('User')
-        .insert([{ telegramId, username }])
+        .insert([{ telegramId, username }]) // Role akan otomatis 'new' dari database
         .select()
         .single();
 
@@ -45,12 +51,47 @@ app.post('/api/auth', async (req, res) => {
 
     res.status(200).json(user);
   } catch (error) {
-    console.error('Authentication error:', error.message);
-    res.status(500).json({ error: 'Terjadi kesalahan di server', details: error.message });
+    // Abaikan error "PGRST116" yang berarti baris tidak ditemukan (ini normal jika user baru)
+    if (error.code !== 'PGRST116') {
+      console.error('Authentication error:', error.message);
+      return res.status(500).json({ error: 'Terjadi kesalahan di server', details: error.message });
+    }
+    // Jika errornya PGRST116, berarti user tidak ada, dan logika di atas sudah menanganinya.
+    // Kita lanjutkan ke proses pembuatan user baru di dalam blok 'if (!user)'
   }
 });
 
-// --- ENDPOINT BARU UNTUK CHECK-IN ---
+// Endpoint #3: Mengatur Peran Pengguna (Publisher/Advertiser)
+app.post('/api/set-role', async (req, res) => {
+  const { telegramId, role } = req.body;
+
+  if (!telegramId || !role) {
+    return res.status(400).json({ error: 'telegramId dan role dibutuhkan' });
+  }
+
+  if (role !== 'publisher' && role !== 'advertiser') {
+    return res.status(400).json({ error: 'Peran tidak valid.' });
+  }
+
+  try {
+    const { data: updatedUser, error } = await supabase
+      .from('User')
+      .update({ role: role })
+      .eq('telegramId', telegramId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    
+    res.status(200).json(updatedUser);
+
+  } catch (error) {
+    console.error('Set role error:', error.message);
+    res.status(500).json({ error: 'Gagal memperbarui peran pengguna.' });
+  }
+});
+
+// Endpoint #4: Check-in Harian
 app.post('/api/check-in', async (req, res) => {
   const { telegramId } = req.body;
   if (!telegramId) {
@@ -73,7 +114,6 @@ app.post('/api/check-in', async (req, res) => {
     const now = new Date();
     if (user.lastCheckIn) {
       const lastCheckInDate = new Date(user.lastCheckIn);
-      // Set jam, menit, detik, ms ke 0 untuk membandingkan tanggal saja
       now.setHours(0, 0, 0, 0);
       lastCheckInDate.setHours(0, 0, 0, 0);
 
@@ -103,8 +143,9 @@ app.post('/api/check-in', async (req, res) => {
   }
 });
 
-
-// --- Menjalankan Server ---
+// =================================================================
+// --- Menjalankan Server untuk Development Lokal ---
+// =================================================================
 const port = process.env.PORT || 3001;
 app.listen(port, () => {
   console.log(`Server lokal berjalan di http://localhost:${port}`);

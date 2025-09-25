@@ -4,13 +4,17 @@ import { styles } from '../styles/Dashboard.styles';
 import { HomeIcon, WalletIcon, UserIcon, CheckCircleIcon, TvIcon, UsersIcon, CubeIcon, LinkIcon } from '../icons';
 
 // GANTI DENGAN URL VERCEL ANDA!
-const API_URL = "https://rajaview.vercel.app";
+const API_URL = "https://rajaview.vercel.app"; 
+// GANTI DENGAN USERNAME BOT TELEGRAM ANDA (tanpa @)!
+const BOT_USERNAME = "rajaviewbot"; 
 
 function Dashboard({ user, onUserUpdate }) {
+  // State untuk fungsionalitas tombol
   const [isCheckInDisabled, setCheckInDisabled] = useState(false);
   const [checkInMessage, setCheckInMessage] = useState('Check-in Harian');
   const [adStatus, setAdStatus] = useState('Tonton Iklan');
 
+  // Efek untuk memeriksa status check-in saat komponen dimuat
   useEffect(() => {
     if (user.lastCheckIn) {
       const now = new Date();
@@ -24,6 +28,7 @@ function Dashboard({ user, onUserUpdate }) {
     }
   }, [user.lastCheckIn]);
 
+  // Fungsi untuk menangani klik tombol Check-in
   const handleCheckIn = async () => {
     setCheckInDisabled(true);
     setCheckInMessage('Memproses...');
@@ -42,10 +47,9 @@ function Dashboard({ user, onUserUpdate }) {
     }
   };
 
-  // --- FUNGSI IKLAN YANG SUDAH DISINKRONKAN ---
+  // Fungsi untuk menangani klik tombol Tonton Iklan
   const handleWatchAd = () => {
     setAdStatus('Memuat iklan...');
-
     const rewardUser = async () => {
       try {
         const response = await axios.post(`${API_URL}/api/reward-ad`, { telegramId: user.telegramId });
@@ -58,35 +62,41 @@ function Dashboard({ user, onUserUpdate }) {
         setAdStatus('Tonton Iklan');
       }
     };
-
     try {
-      // Pastikan fungsi show_9929126 ada sebelum dipanggil
       if (typeof window.show_9929126 === 'function') {
-        window.show_9929126()
-          .then(() => {
-            // Ini hanya akan berjalan JIKA user selesai menonton/menutup iklan
-            console.log("Iklan selesai ditonton, memberikan reward...");
-            rewardUser();
-          })
-          .catch((e) => {
-            // Ini berjalan jika ada error saat memutar iklan
-            console.error("Monetag ad error:", e);
-            window.Telegram?.WebApp?.showAlert("Iklan gagal dimuat. Coba lagi nanti.");
-            setAdStatus('Tonton Iklan');
-          });
+        window.show_9929126().then(rewardUser).catch((e) => {
+          console.error("Monetag ad error:", e);
+          window.Telegram?.WebApp?.showAlert("Iklan gagal dimuat. Coba lagi nanti.");
+          setAdStatus('Tonton Iklan');
+        });
       } else {
         throw new Error("Fungsi iklan Monetag tidak ditemukan.");
       }
     } catch (e) {
       console.error("Gagal menjalankan script iklan:", e);
-      window.Telegram?.WebApp?.showAlert("Gagal memulai iklan. Pastikan script sudah benar.");
+      window.Telegram?.WebApp?.showAlert("Gagal memulai iklan.");
       setAdStatus('Tonton Iklan');
     }
   };
 
+  // Fungsi untuk menyalin link referral
+  const referralLink = `https://t.me/${BOT_USERNAME}?start=${user.referralCode}`;
+  const handleCopyReferral = () => {
+    navigator.clipboard.writeText(referralLink)
+      .then(() => {
+        window.Telegram?.WebApp?.showAlert('Link referral berhasil disalin!');
+      })
+      .catch(err => {
+        console.error('Gagal menyalin:', err);
+        window.Telegram?.WebApp?.showAlert('Gagal menyalin link.');
+      });
+  };
+
+  // Fungsi utilitas lainnya
   const getInitials = (name) => (name ? name.substring(0, 2).toUpperCase() : 'U');
   const handleComingSoon = () => window.Telegram?.WebApp?.showAlert('Fitur ini akan segera hadir!');
 
+  // Variabel untuk ditampilkan di UI
   const username = user?.username || 'Pengguna';
   const level = user?.level || 1;
   const balance = parseFloat(user?.balance || 0).toLocaleString('id-ID');
@@ -101,6 +111,19 @@ function Dashboard({ user, onUserUpdate }) {
         </div>
         <div style={styles.balance}>Rp {balance}</div>
       </header>
+
+      <div style={styles.card}>
+        <h2 style={styles.cardTitle}>Undang Teman & Dapatkan Bonus!</h2>
+        <input 
+          type="text" 
+          value={referralLink} 
+          readOnly 
+          style={{ width: 'calc(100% - 22px)', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', marginBottom: '10px' }}
+        />
+        <button onClick={handleCopyReferral} style={{...styles.taskButton, marginBottom: 0}}>
+          Salin Link
+        </button>
+      </div>
       
       <div style={styles.card}>
         <h2 style={styles.cardTitle}>Tugas Harian</h2>
@@ -111,7 +134,7 @@ function Dashboard({ user, onUserUpdate }) {
           <TvIcon style={styles.taskIcon} /> {adStatus}
         </button>
         <button onClick={handleComingSoon} style={styles.taskButton}>
-          <UsersIcon style={styles.taskIcon} /> Undang Teman
+          <UsersIcon style={styles.taskIcon} /> Tugas Referral Lain
         </button>
       </div>
       
